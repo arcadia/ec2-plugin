@@ -35,6 +35,7 @@ public class WinConnection {
 
     private boolean useHTTPS;
     private static final int TIMEOUT=8000; //8 seconds
+    private static final int PING_TIMEOUT=80000; //80 seconds
 
     public WinConnection(String host, String username, String password) {
         this.host = host;
@@ -123,7 +124,7 @@ public class WinConnection {
         log.log(Level.FINE, "pinging " + host);
         try {
             Socket socket=new Socket();
-            socket.connect(new InetSocketAddress(host, 445), TIMEOUT);
+            socket.connect(new InetSocketAddress(host, 445), PING_TIMEOUT);
             socket.close();
             winrm().ping();
             SmbFile test = new SmbFile(smbURLPrefix()+"IPC$", authentication);
