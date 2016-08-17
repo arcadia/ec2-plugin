@@ -151,7 +151,14 @@ public class WinRMClient {
             log.log(Level.FINE, "keep going baby!");
             return true;
         } else {
-            exitCode = Integer.parseInt(first(response, "//" + Namespaces.NS_WIN_SHELL.getPrefix() + ":ExitCode"));
+            try {
+                exitCode = Integer.parseInt(first(response, "//" + Namespaces.NS_WIN_SHELL.getPrefix() + ":ExitCode"));
+            }
+            catch (Exception e) {
+                log.log(Level.WARNING, "failed to parse exit code: " + response);
+                exitCode = 0;
+            }
+
             log.log(Level.FINE, "no more output - command is now done - exit code: " + exitCode);
         }
         return false;
@@ -217,7 +224,12 @@ public class WinRMClient {
 
             log.log(Level.FINEST, "Request:\nPOST " + url + "\n" + request.asXML());
 
-            HttpResponse response = httpclient.execute(post, context);
+            // making thread safe.  see http://stackoverflow.com/questions/29681969/ntlm-authentication-failing-in-multithreaded-application
+            HttpResponse response = null;
+            synchronized(context) {
+                response = httpclient.execute(post, context);
+            }            
+
             HttpEntity responseEntity = response.getEntity();
 
             if (response.getStatusLine().getStatusCode() != 200) {
