@@ -182,7 +182,7 @@ public class WinRMClient {
             httpclient.getAuthSchemes().register(AuthPolicy.SPNEGO,new NegotiateNTLMSchemaFactory());
         }
         httpclient.setCredentialsProvider(credsProvider);
-        httpclient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 5000);
+        httpclient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 50000);
         // httpclient.setHttpRequestRetryHandler(new WinRMRetryHandler());
         return httpclient;
     }
