@@ -35,7 +35,6 @@ public class WinConnection {
 
     private boolean useHTTPS;
     private static final int TIMEOUT=8000; //8 seconds
-    private static final int PING_TIMEOUT=80000; //80 seconds
 
     public WinConnection(String host, String username, String password) {
         this.host = host;
@@ -124,7 +123,21 @@ public class WinConnection {
         log.log(Level.FINE, "pinging " + host);
         try {
             Socket socket=new Socket();
-            socket.connect(new InetSocketAddress(host, 445), PING_TIMEOUT);
+            //try 10 times
+            boolean pingSucc = false;
+            for (int i=0; i<10; i++) {
+                try {
+                    socket.connect(new InetSocketAddress(host, 445), TIMEOUT);
+                } catch (Exception e) {
+                    log.log(Level.WARNING, "Failed to verify connectivity to Windows slave, retrying...", e);
+                }
+                pingSucc = true;
+                break;
+            }
+            if (pingSucc == false) {
+                log.log(Level.WARNING, "Failed to verify connectivity to Windows slave 10 times");
+                return false;
+            }
             socket.close();
             winrm().ping();
             SmbFile test = new SmbFile(smbURLPrefix()+"IPC$", authentication);
