@@ -20,6 +20,7 @@ import static java.util.regex.Pattern.quote;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.concurrent.TimeUnit;
 
 public class WinConnection {
     private static final Logger log = Logger.getLogger(WinConnection.class.getName());
@@ -130,6 +131,9 @@ public class WinConnection {
                     socket.connect(new InetSocketAddress(host, 445), TIMEOUT);
                 } catch (Exception e) {
                     log.log(Level.WARNING, "Failed to verify connectivity to Windows slave, retrying...", e);
+                    try {
+                        Thread.sleep(TimeUnit.MINUTES.toMillis(3));
+                    } catch (InterruptedException ex) {}
                 }
                 pingSucc = true;
                 break;
@@ -141,7 +145,25 @@ public class WinConnection {
             socket.close();
             winrm().ping();
             SmbFile test = new SmbFile(smbURLPrefix()+"IPC$", authentication);
-            test.connect();
+
+            pingSucc = false;
+            for (int i=0; i<10; i++) {
+                try {
+                    test.connect();
+                } catch (Exception e) {
+                    log.log(Level.WARNING, "Failed to connect to Windows slave, retrying...", e);
+                    try {
+                        Thread.sleep(TimeUnit.MINUTES.toMillis(3));
+                    } catch (InterruptedException ex) {}
+                }
+                pingSucc = true;
+                break;
+            }
+            if (pingSucc == false) {
+                log.log(Level.WARNING, "Failed to connect to Windows slave 10 times");
+                return false;
+            }
+
             return true;
         } catch (Exception e) {
             log.log(Level.WARNING, "Failed to verify connectivity to Windows slave", e);

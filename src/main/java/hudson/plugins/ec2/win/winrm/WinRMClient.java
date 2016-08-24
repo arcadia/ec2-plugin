@@ -182,8 +182,8 @@ public class WinRMClient {
             httpclient.getAuthSchemes().register(AuthPolicy.SPNEGO,new NegotiateNTLMSchemaFactory());
         }
         httpclient.setCredentialsProvider(credsProvider);
-        httpclient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 50000);
-        // httpclient.setHttpRequestRetryHandler(new WinRMRetryHandler());
+        httpclient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 10000);
+          // httpclient.setHttpRequestRetryHandler(new WinRMRetryHandler());
         return httpclient;
     }
 
@@ -192,8 +192,8 @@ public class WinRMClient {
     }
 
     private Document sendRequest(Document request, int retry) {
-        if (retry > 3) {
-            throw new RuntimeException("Too many retry for request");
+        if (retry > 10) {
+            throw new RuntimeException("Too many retries for request");
         }
 
         DefaultHttpClient httpclient = buildHTTPClient();
@@ -217,7 +217,18 @@ public class WinRMClient {
 
             log.log(Level.FINEST, "Request:\nPOST " + url + "\n" + request.asXML());
 
-            HttpResponse response = httpclient.execute(post, context);
+            //try 10 times
+            HttpResponse response = null;
+            try {
+                response = httpclient.execute(post, context);
+            } catch (Exception e) {
+                log.log(Level.WARNING, "Failed to execute, retrying...", e);
+                try {
+                    Thread.sleep(TimeUnit.MINUTES.toMillis(3));
+                } catch (InterruptedException ex) {}
+                return sendRequest(request, ++retry);
+            }
+
             HttpEntity responseEntity = response.getEntity();
 
             if (response.getStatusLine().getStatusCode() != 200) {
