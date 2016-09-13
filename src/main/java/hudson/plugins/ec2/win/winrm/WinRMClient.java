@@ -124,6 +124,9 @@ public class WinRMClient {
     }
 
     public boolean slurpOutput(PipedOutputStream stdout, PipedOutputStream stderr) throws IOException {
+
+        String strExitCode = null;
+
         log.log(Level.FINE, "--> SlurpOutput");
         ImmutableMap<String, PipedOutputStream> streams = ImmutableMap.of("stdout", stdout, "stderr", stderr);
 
@@ -151,7 +154,13 @@ public class WinRMClient {
             log.log(Level.FINE, "keep going baby!");
             return true;
         } else {
-            exitCode = Integer.parseInt(first(response, "//" + Namespaces.NS_WIN_SHELL.getPrefix() + ":ExitCode"));
+            try {
+                strExitCode = first(response, "//" + Namespaces.NS_WIN_SHELL.getPrefix() + ":ExitCode");
+                exitCode = Integer.parseInt(strExitCode);
+            } catch (Exception e) {
+                log.log(Level.WARNING, "invalid exit code: " + response);
+                return true;
+        }
             log.log(Level.FINE, "no more output - command is now done - exit code: " + exitCode);
         }
         return false;
@@ -257,6 +266,14 @@ public class WinRMClient {
                         log.log(Level.WARNING, "winrm returned 401 - retrying now");
                         return sendRequest(request, ++retry);
                     }
+                    else if (response.getStatusLine().getStatusCode() == 500) {
+                        log.log(Level.WARNING, "winrm returned 500 - retrying in 3 minutes");
+                        try {
+                            Thread.sleep(TimeUnit.MINUTES.toMillis(3));
+                        } catch (InterruptedException e) {
+                        }
+                        return sendRequest(request, ++retry);
+                    }
                     log.log(Level.WARNING, "winrm service " + shellId + " unexpected HTTP Response ("
                             + response.getStatusLine().getReasonPhrase() + "): "
                             + EntityUtils.toString(response.getEntity()));
@@ -271,7 +288,16 @@ public class WinRMClient {
                 throw new RuntimeException("Unexepected WinRM content type: " + entity.getContentType());
             }
 
-            Document responseDocument = DocumentHelper.parseText(EntityUtils.toString(responseEntity));
+            Document responseDocument = null;
+            try {
+                responseDocument = DocumentHelper.parseText(EntityUtils.toString(responseEntity));
+            } catch (Exception e) {
+                log.log(Level.WARNING, "Failed to execute, retrying...", e);
+                try {
+                    Thread.sleep(TimeUnit.MINUTES.toMillis(3));
+                } catch (InterruptedException ex) {}
+                return sendRequest(request, ++retry);
+            }
 
             log.log(Level.FINEST, "Response:\n" + responseDocument.asXML());
             return responseDocument;
