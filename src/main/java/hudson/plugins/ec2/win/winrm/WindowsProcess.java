@@ -7,6 +7,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.io.Closeables;
 
@@ -118,7 +119,16 @@ public class WindowsProcess {
             public void run() {
                 try {
                     byte[] buf = new byte[INPUT_BUFFER];
+                    long startTime = System.currentTimeMillis();
+
                     for (;;) {
+
+                        long waitTime = System.currentTimeMillis() - startTime;
+                        if (waitTime > TimeUnit.MINUTES.toMillis(10)) {
+                            log.log(Level.WARNING, "ouch, Timout on input copy " + command);
+                            break;
+                        }
+
                         int n = 0;
                         try {
                             n = toCallersStdin.read(buf);
@@ -130,6 +140,7 @@ public class WindowsProcess {
                             // is killed but the input stream is handed to
                             // another thread
                             // in this case, we can still read from the pipe.
+                            log.log(Level.WARNING, "ignoring IOException", ioe);
                             continue;
                         }
                         if (n == -1)
