@@ -119,15 +119,8 @@ public class WindowsProcess {
             public void run() {
                 try {
                     byte[] buf = new byte[INPUT_BUFFER];
-                    long startTime = System.currentTimeMillis();
 
                     for (;;) {
-
-                        long waitTime = System.currentTimeMillis() - startTime;
-                        if (waitTime > TimeUnit.MINUTES.toMillis(10)) {
-                            log.log(Level.WARNING, "ouch, Timout on input copy " + command);
-                            break;
-                        }
 
                         int n = 0;
                         try {
@@ -145,8 +138,14 @@ public class WindowsProcess {
                         }
                         if (n == -1)
                             break;
-                        if (n == 0)
+                        if (n == 0) {
+							log.log(Level.INFO, "0 bytes read, sleeping 1s");
+							try {
+								Thread.sleep(1000);
+							} catch (InterruptedException e) {
+							}
                             continue;
+						}
 
                         byte[] bufToSend = new byte[n];
                         System.arraycopy(buf, 0, bufToSend, 0, n);
