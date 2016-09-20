@@ -201,7 +201,7 @@ public class WinRMClient {
     }
 
     private Document sendRequest(Document request, int retry) {
-        if (retry > 10) {
+        if (retry > 100) {
             throw new RuntimeException("Too many retries for request");
         }
 
