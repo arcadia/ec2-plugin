@@ -133,6 +133,10 @@ public class WindowsProcess {
                             // is killed but the input stream is handed to
                             // another thread
                             // in this case, we can still read from the pipe.
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                            }
                             continue;
                         }
                         if (n == -1)
